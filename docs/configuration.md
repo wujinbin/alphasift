@@ -58,8 +58,8 @@ TUSHARE_TOKEN=...
 | `INDUSTRY_MAP_FILES` | 否 | 本地 code->industry/concepts/board_heat 映射 CSV/JSON/JSONL，逗号分隔 | - |
 | `INDUSTRY_PROVIDER` | 否 | 可选行业、概念、板块热度 provider，如 `akshare`；默认关闭 | `none` |
 | `INDUSTRY_PROVIDER_MAX_BOARDS` | 否 | provider 模式最多反查板块数 | `80` |
-| `SNAPSHOT_SOURCE_PRIORITY` | 否 | 数据源优先级，逗号分隔 | `efinance,akshare_em,em_datacenter,tushare` |
-| `TUSHARE_TOKEN` / `TUSHARE_API_TOKEN` | `tushare` 兜底时必须 | Tushare Pro token，用于最近交易日日线和 daily_basic 兜底 | - |
+| `SNAPSHOT_SOURCE_PRIORITY` | 否 | 数据源优先级，逗号分隔；不设置时若配置了 Tushare token 会优先 `tushare` | 无 token: `efinance,akshare_em,em_datacenter` |
+| `TUSHARE_TOKEN` / `TUSHARE_API_TOKEN` | 使用 `tushare` 时必须 | Tushare Pro token，用于最近交易日日线和 daily_basic 兜底 | - |
 | `TUSHARE_TRADE_DATE` | 否 | 固定 Tushare 交易日，格式 `YYYYMMDD`，便于复现实验 | 自动取最近开市日 |
 | `POST_ANALYZERS` | 否 | L3 后置分析器，设为 `none` 可关闭 | `scorecard` |
 | `POST_ANALYSIS_MAX_PICKS` | 否 | DSA/HTTP 等高成本 L3 分析器最多处理前 N 只；本地 scorecard 默认处理全部输出 | `3` |
@@ -120,10 +120,16 @@ alphasift --env-file /path/to/daily_stock_analysis/.env \
 
 ## 数据源配置
 
-支持四种 A 股全市场快照数据源，自动按优先级降级。默认链路是：
+支持四种 A 股全市场快照数据源，自动按优先级降级。默认未配置 Tushare token 时使用：
 
 ```text
-efinance -> akshare_em -> em_datacenter -> tushare
+efinance -> akshare_em -> em_datacenter
+```
+
+若配置了 `TUSHARE_TOKEN` / `TUSHARE_API_TOKEN`，且没有手工设置 `SNAPSHOT_SOURCE_PRIORITY`，默认链路改为：
+
+```text
+tushare -> efinance -> akshare_em -> em_datacenter
 ```
 
 | 数据源 | 接口 | 特点 |
@@ -131,9 +137,9 @@ efinance -> akshare_em -> em_datacenter -> tushare
 | `efinance` | push2.eastmoney.com | 实时推送，交易时段最快 |
 | `akshare_em` | 82.push2.eastmoney.com | 实时推送，备选 |
 | `em_datacenter` | data.eastmoney.com | 选股器 API，非交易时段可用 |
-| `tushare` | Tushare Pro `daily` + `daily_basic` | 最近交易日兜底，需 `TUSHARE_TOKEN`，非实时 |
+| `tushare` | Tushare Pro `daily` + `daily_basic` | 最近交易日数据，需 `TUSHARE_TOKEN`，非实时 |
 
-周末或节假日 push2 接口不可用时，会自动降级到 `em_datacenter`。如果东方财富链路也不可用，且已配置 `TUSHARE_TOKEN`，会继续用 Tushare 最近开市日数据兜底。
+周末或节假日 push2 接口不可用时，会自动降级到 `em_datacenter`。如果某个数据源缺少当前策略必需字段，例如 PB，系统会跳过该源继续尝试后续来源。
 
 ## L3 后置分析器
 

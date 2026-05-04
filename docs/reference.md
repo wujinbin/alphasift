@@ -48,16 +48,16 @@ alphasift/
 
 ## 数据源边界
 
-支持四种 A 股全市场快照数据源，自动按优先级降级。默认链路是 `efinance` -> `akshare_em` -> `em_datacenter` -> `tushare`。
+支持四种 A 股全市场快照数据源，自动按优先级降级。未显式设置 `SNAPSHOT_SOURCE_PRIORITY` 时，无 Tushare token 默认链路是 `efinance` -> `akshare_em` -> `em_datacenter`；有 token 默认链路是 `tushare` -> `efinance` -> `akshare_em` -> `em_datacenter`。
 
 | 数据源 | 接口 | 特点 |
 |--------|------|------|
 | `efinance` | push2.eastmoney.com | 实时推送，交易时段最快 |
 | `akshare_em` | 82.push2.eastmoney.com | 实时推送，备选 |
 | `em_datacenter` | data.eastmoney.com | 选股器 API，非交易时段可用 |
-| `tushare` | Tushare Pro `daily` + `daily_basic` | 最近交易日兜底，需 `TUSHARE_TOKEN`，非实时 |
+| `tushare` | Tushare Pro `daily` + `daily_basic` | 最近交易日数据，需 `TUSHARE_TOKEN`，非实时 |
 
-周末或节假日 push2 接口不可用时，会自动降级到 `em_datacenter`。如果东方财富链路也不可用，且已配置 `TUSHARE_TOKEN`，会继续用 Tushare 最近开市日数据兜底。
+周末或节假日 push2 接口不可用时，会自动降级到 `em_datacenter`。如果某个数据源缺少当前策略必需字段，例如 PB，系统会跳过该源继续尝试后续来源。
 
 ## 已知限制
 
@@ -85,7 +85,7 @@ alphasift/
 测试环境：Python 3.12，数据来源为上一交易日（2026-04-10）收盘数据。
 
 - efinance / akshare 实时推送接口在非交易时段不可用，当时自动降级到 `em_datacenter`（东方财富选股器 API）。
-- 当前默认链路已追加 `tushare` 作为最后兜底；本次记录未配置 Tushare token，未触发该源。
+- 当前默认链路支持 Tushare；配置 token 且未手工指定 `SNAPSHOT_SOURCE_PRIORITY` 时会优先使用 Tushare。本次记录未配置 Tushare token，未触发该源。
 - 未启用 LLM 排序（`--no-llm`）。
 
 #### 双低选股（dual_low）
@@ -119,6 +119,6 @@ alphasift/
 | efinance（push2.eastmoney.com） | 不可用 | 实时推送接口，非交易时段返回空响应 |
 | akshare_em（82.push2.eastmoney.com） | 不可用 | 同上 |
 | em_datacenter（data.eastmoney.com） | 可用 | 选股器 API，周末仍返回最近交易日数据 |
-| tushare（Tushare Pro） | 未触发 | 当前已支持，需 `TUSHARE_TOKEN`，在前三个源失败后兜底 |
+| tushare（Tushare Pro） | 未触发 | 当前已支持，需 `TUSHARE_TOKEN` |
 
-降级链路验证通过：`efinance` -> `akshare_em` -> `em_datacenter`，自动切换到可用数据源。当前默认链路为 `efinance` -> `akshare_em` -> `em_datacenter` -> `tushare`。
+降级链路验证通过：`efinance` -> `akshare_em` -> `em_datacenter`，自动切换到可用数据源。

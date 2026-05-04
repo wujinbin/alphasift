@@ -375,7 +375,7 @@ def _run_quickstart(*, strategy: str = "dual_low", max_output: int = 5) -> None:
         )
     except Exception as exc:  # noqa: BLE001
         print(f"   失败: {exc}")
-        print("   提示: 检查网络，或设置 SNAPSHOT_SOURCE_PRIORITY=akshare_em,em_datacenter")
+        print("   提示: 检查网络，或设置 SNAPSHOT_SOURCE_PRIORITY / TUSHARE_TOKEN")
         sys.exit(2)
 
     print(

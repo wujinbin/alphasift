@@ -112,6 +112,30 @@ def test_fetch_snapshot_with_fallback_attaches_source_errors(monkeypatch):
     assert df.attrs["source_errors"] == ["bad: bad source"]
 
 
+def test_fetch_snapshot_with_fallback_skips_missing_required_columns(monkeypatch):
+    def fake_fetch(source):
+        if source == "missing_pb":
+            return pd.DataFrame([{"code": "000001", "name": "示例", "price": 10.0}])
+        return pd.DataFrame([{
+            "code": "000001",
+            "name": "示例",
+            "price": 10.0,
+            "pb_ratio": 0.8,
+        }])
+
+    monkeypatch.setattr("alphasift.snapshot.fetch_cn_snapshot", fake_fetch)
+
+    df = fetch_snapshot_with_fallback(
+        ["missing_pb", "complete"],
+        required_columns=["price", "pb_ratio"],
+    )
+
+    assert df.attrs["source_errors"] == [
+        "missing_pb: missing required columns pb_ratio"
+    ]
+    assert df.loc[0, "pb_ratio"] == 0.8
+
+
 def test_fetch_snapshot_with_fallback_raises_all_errors(monkeypatch):
     monkeypatch.setattr(
         "alphasift.snapshot.fetch_cn_snapshot",

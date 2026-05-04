@@ -35,13 +35,23 @@ def fetch_cn_snapshot(source: str = "efinance") -> pd.DataFrame:
         raise ValueError(f"Unknown snapshot source: {source}")
 
 
-def fetch_snapshot_with_fallback(sources: list[str]) -> pd.DataFrame:
-    """Try sources in order, return first success."""
+def fetch_snapshot_with_fallback(
+    sources: list[str],
+    *,
+    required_columns: list[str] | None = None,
+) -> pd.DataFrame:
+    """Try sources in order, return first source matching required schema."""
     errors = []
     for source in sources:
         try:
             df = fetch_cn_snapshot(source)
             if not df.empty:
+                missing = _missing_required_columns(df, required_columns or [])
+                if missing:
+                    errors.append(
+                        f"{source}: missing required columns {','.join(missing)}"
+                    )
+                    continue
                 df.attrs["source_errors"] = list(errors)
                 logger.info("Snapshot fetched from %s: %d rows", source, len(df))
                 return df
@@ -50,6 +60,17 @@ def fetch_snapshot_with_fallback(sources: list[str]) -> pd.DataFrame:
             errors.append(f"{source}: {e}")
             logger.warning("Snapshot source %s failed: %s", source, e)
     raise RuntimeError(f"All snapshot sources failed: {'; '.join(errors)}")
+
+
+def _missing_required_columns(df: pd.DataFrame, required_columns: list[str]) -> list[str]:
+    missing: list[str] = []
+    for col in required_columns:
+        if col not in df.columns:
+            missing.append(col)
+            continue
+        if df[col].dropna().empty:
+            missing.append(col)
+    return missing
 
 
 def _fetch_efinance() -> pd.DataFrame:
